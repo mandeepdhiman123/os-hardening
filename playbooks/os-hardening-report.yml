@@ -1,0 +1,74 @@
+---
+- hosts: "{{console1}}"
+  become: yes
+  become_user: mosipuser
+  tasks:
+    - name: Check reports directory.
+      stat:
+        path: "{{ install_root }}/{{ sandbox_domain_name }}"
+      register: oscap_report_folder
+
+    - name: "echo if directory already existed"
+      debug:
+        msg: "Report directory already exist"
+      when: oscap_report_folder.stat.exists
+
+    - name: "Create directory if not exists"
+      file:
+        path: "{{ install_root }}/{{ sandbox_domain_name }}"
+        state: directory
+      when: oscap_report_folder.stat.exists == false
+
+- hosts: "{{cluster1}}"
+  vars:
+    host: "{{ inventory_hostname }}"
+  tasks:
+    - name: copy report before remediation
+      copy:
+        src: /tmp/oscap-report-before.html
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}/{{ inventory_hostname }}-before.html"
+      when: host ==  "console"
+
+    - name: copy report after remediation
+      copy:
+        src: /tmp/oscap-report-after.html
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}/{{ inventory_hostname }}-after.html"
+      when: host ==  "console"
+
+    - name: copy local remediation script
+      copy:
+        src: /tmp/remediation-script.sh
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}/{{ inventory_hostname }}-remediation-script.sh"
+      when: host ==  "console"
+
+    - name: copy remote report before remediation
+      fetch:
+        src: /tmp/oscap-report-before.html
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}/{{ inventory_hostname }}-before.html"
+        flat: yes
+      when: host !=  "console"
+
+    - name: copy remote report after remediation
+      fetch:
+        src: /tmp/oscap-report-after.html
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}/{{ inventory_hostname }}-after.html"
+        flat: yes
+      when: host !=  "console"
+
+    - name: copy remote remediation script
+      fetch:
+        src: /tmp/remediation-script.sh
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}/{{ inventory_hostname }}-remediation-script.sh"
+        flat: yes
+      when: host !=  "console"
+
+- hosts: "{{console1}}"
+  tasks:
+    - name: Zip Reports
+      archive:
+        path: "{{ install_root }}/{{ sandbox_domain_name }}"
+        dest: "{{ install_root }}/{{ sandbox_domain_name }}.zip"
+        format: zip
+
+    - name: Upload Reports
+      shell: 'curl  args: -u ''{{ reporting_user }}:{{ reporting_user_secret}}'' --request POST -F file=@{{ install_root }}/{{ sandbox_domain_name }}.zip -H ''Accept: application/json'' -H ''X-Atlassian-Token: no-check'' --url https://mosip.atlassian.net/wiki/rest/api/content/54493486/child/attachment'

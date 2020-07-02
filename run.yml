@@ -1,0 +1,5 @@
+# Master playbook
+#
+- {import_playbook: playbooks/os-hardening-cluster.yml, vars: {cluster: scancluster}}
+- {import_playbook: playbooks/os-hardening-report.yml, vars: {console: console1, cluster1: scancluster}}
+- {import_playbook: playbooks/uninstall-scap.yml, vars: {cluster: scancluster}}

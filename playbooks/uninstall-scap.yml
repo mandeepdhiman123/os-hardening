@@ -1,0 +1,10 @@
+---
+- hosts: "{{ cluster1 }}"
+  tasks:
+    - name: un-install openscap scanner
+      package:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - openscap-scanner
+        - scap-security-guide
